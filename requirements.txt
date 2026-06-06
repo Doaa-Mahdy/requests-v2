@@ -1,3 +1,4 @@
+# Core dependencies
 requests
 numpy
 Pillow
@@ -8,11 +9,18 @@ faiss-cpu
 opencv-python
 PyMuPDF
 scipy
+
+# Audio/Video processing
 pydub
+ffmpeg-python
+
+# NLP & Language
 word2number
 langchain-ollama
 langgraph
 langchain-core
 tavily
 rapidfuzz
+
+# Testing
 pytest
