@@ -3,7 +3,7 @@ import os
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 from typing import TypedDict, List, Dict, Any, Optional
 from langgraph.graph import StateGraph, END
-
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # Import the actual agents you wrote
 # from app.nodes.intake import intake_node
 from app.agents.search import search_agent
