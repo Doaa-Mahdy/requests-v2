@@ -12,13 +12,25 @@ def decide_next_step(state: CaseState):
     loop_count = reasoning.get("loop_count", 0)
     next_step = reasoning.get("next_step")
     
+    # استخراج تاريخ العمليات مع التأكد من معالجة الكائنات بشكل صحيح
     history = state.get("inquiry_history", [])
-    last_step_type = history[-1].get("type") if history else None
+    last_step_type = None
+    
+    if history:
+        last_item = history[-1]
+        # إذا كان العنصر عبارة عن قاموس، استخدم get
+        if isinstance(last_item, dict):
+            last_step_type = last_item.get("type")
+        # إذا كان كائناً من LangChain، نحاول استخراج النوع منه أو تجاهله
+        elif hasattr(last_item, "type"):
+            last_step_type = getattr(last_item, "type", None)
 
+    # شرط الأمان: إذا تجاوزنا 3 دورات أو طلب الـ LLM التقرير
     if loop_count >= 3 or next_step == "report":
         return "report"
     
-    if next_step == last_step_type and next_step in {"vqa", "search"}:
+    # شرط منع التكرار: إذا كانت الأداة المطلوبة هي نفس الأداة الأخيرة
+    if last_step_type and next_step == last_step_type and next_step in {"vqa", "search"}:
         return "report"
     
     return next_step if next_step in {"vqa", "search", "report"} else "report"
