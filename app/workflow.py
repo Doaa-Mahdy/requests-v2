@@ -1,5 +1,5 @@
 from langgraph.graph import StateGraph, END
-from app.state import AgentState
+from app.state import CaseState
 
 from app.nodes.intake import intake_node
 from app.nodes.evidence import evidence_node
@@ -8,7 +8,7 @@ from app.nodes.reasoning import reasoning_node
 from app.nodes.report import report_node
 from app.agents.search import search_agent
 
-builder = StateGraph(AgentState)
+builder = StateGraph(CaseState)
 
 builder.add_node("intake", intake_node)
 builder.add_node("evidence", evidence_node)

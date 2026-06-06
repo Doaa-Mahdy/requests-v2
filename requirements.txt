@@ -12,4 +12,7 @@ pydub
 word2number
 langchain-ollama
 langgraph
+langchain-core
+tavily
+rapidfuzz
 pytest
