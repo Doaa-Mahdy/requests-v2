@@ -16,6 +16,7 @@ ffmpeg-python
 
 # NLP & Language
 word2number
+ollama
 langchain-ollama
 langgraph
 langchain-core

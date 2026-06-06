@@ -62,24 +62,39 @@ def run_case(case_name: str, state: Dict[str, Any]) -> None:
 
 
 def main():
-    sample_image = "data/sample_vqa_image.jpg"
-    create_dummy_image(sample_image)
+    sample_image_1 = "data/img55.jpg"
+    sample_image_2 = "data/prescription.jpg"
+    create_dummy_image(sample_image_1)
+    create_dummy_image(sample_image_2)
 
     cases = [
         {
-            "name": "Single image VQA",
+            "name": "VQA with single image and default questions",
             "state": {
                 "text": "تحقق من محتوى الصورة.",
-                "images": [sample_image],
-                "evidence": {}
+                "images": [sample_image_1],
+                "evidence": {},
+                "reasoning": {}
             }
         },
         {
-            "name": "No image input",
+            "name": "VQA with multiple images and specific question",
+            "state": {
+                "text": "اسم الدواء والجرعة؏",
+                "images": [sample_image_1, sample_image_2],
+                "evidence": {},
+                "reasoning": {
+                    "question_or_query": "ما اسم الدواء المريب في هذه الروشتة؟"
+                }
+            }
+        },
+        {
+            "name": "VQA with no images",
             "state": {
                 "text": "لا يوجد صور.",
                 "images": [],
-                "evidence": {}
+                "evidence": {},
+                "reasoning": {}
             }
         }
     ]

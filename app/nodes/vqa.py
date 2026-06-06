@@ -14,17 +14,20 @@ def vqa_node(state: CaseState) -> dict:
     """Active VQA node for image understanding before reasoning."""
     image_paths = state.get("images") or []
     intake_text = state.get("text") or ""
+    question = state.get("reasoning", {}).get("question_or_query")
 
     if not image_paths:
         return {}
 
     ocr_texts = [intake_text] * len(image_paths)
+    questions = [question] if question else VQA_QUESTIONS
+
     try:
         vqa_results = answer_three_questions_batch(
             image_paths=image_paths,
             ocr_texts=ocr_texts,
             description="تحليل صور الطلب والتناسق مع نص الشكوى",
-            questions=VQA_QUESTIONS
+            questions=questions
         )
     except Exception as e:
         vqa_results = [{
@@ -33,7 +36,7 @@ def vqa_node(state: CaseState) -> dict:
 
     current_evidence = state.get("evidence") or {}
     current_evidence["vqa_analysis"] = {
-        "questions": VQA_QUESTIONS,
+        "questions": questions,
         "results": vqa_results,
         "metadata": {
             "image_count": len(image_paths),
@@ -41,6 +44,14 @@ def vqa_node(state: CaseState) -> dict:
         }
     }
 
+    inquiry_history = state.get("inquiry_history", [])
+    inquiry_history = inquiry_history + [{
+        "type": "vqa",
+        "question": question if question else "default_vqa_questions",
+        "results": vqa_results
+    }]
+
     return {
-        "evidence": current_evidence
+        "evidence": current_evidence,
+        "inquiry_history": inquiry_history
     }

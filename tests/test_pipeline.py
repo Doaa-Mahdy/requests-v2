@@ -67,11 +67,16 @@ def _mock_answer_single_question(image_path: str, question: str, ocr_text: str =
 
 def _mock_llm_invoke(prompt: str):
     prompt_lower = prompt.strip().lower()
-    if "needs_followup" in prompt_lower:
-        return SimpleNamespace(content='{"needs_followup": false, "followup_questions": [], "analysis": "لا حاجة لمعلومات إضافية."}')
-
-    # Final reasoning / report stub
-    return SimpleNamespace(content='{"need": "دعم طبي عاجل", "severity": "عالي", "decision": "قبول", "is_emergency": true, "missing_info": [], "reasoning": "القرار يعتمد على الأدلة المتاحة.", "confidence": 0.92}')
+    
+    # For reasoning node
+    if "خبير دعم اتخاذ قرار" in prompt:
+        if "عدد الصور المرفقة: 0" in prompt or "images: 0" in prompt.lower():
+            return SimpleNamespace(content='{"next_step": "search", "action_details": {"target": "معلومات عن الحالة", "reasoning": "لا توجد صور، استخدم البحث للمعلومات الإضافية."}}' )
+        else:
+            return SimpleNamespace(content='{"next_step": "vqa", "action_details": {"target": "ما محتوى الصور المرفقة؟", "reasoning": "هناك صور بحاجة لتحليل."}}' )
+    
+    # For report node
+    return SimpleNamespace(content='{"case_summary": "حالة طبية طارئة بحاجة لرعاية عاجلة.", "urgent_need": "دعم تكاليف علاج عاجل", "severity": "عالي", "recommended_action": "قبول الدعم المالي العاجل", "reasoning": "الحالة واضحة وتستحق الدعم.", "confidence": 0.92}')
 
 
 def _install_pipeline_stubs():
@@ -130,9 +135,18 @@ def run_pipeline_case(case_name: str, initial_state: Dict[str, Any]) -> None:
     state = dict(initial_state)
     state = {**state, **intake_module.intake_node(state)}
     state = {**state, **evidence_module.evidence_node(state)}
-    state = {**state, **vqa_module.vqa_node(state)}
-
-    # Simulate a search step if search agent is unavailable
+    
+    # Simulate reasoning loop (only do one iteration for testing)
+    reasoning_output = reasoning_module.reasoning_node(state)
+    state = {**state, **reasoning_output}
+    print(f"Reasoning decision: {state.get('reasoning', {}).get('next_step', 'unknown')}")
+    
+    # If reasoning suggests VQA, run it
+    if state.get('reasoning', {}).get('next_step') == 'vqa':
+        vqa_output = vqa_module.vqa_node(state)
+        state = {**state, **vqa_output}
+    
+    # Simulate search results
     state["search_results"] = {
         "definitions": [],
         "medical_analysis": [{"case_or_drug": "دواء", "usage_causes": "علاج ألم", "source": "mock"}],
@@ -141,14 +155,17 @@ def run_pipeline_case(case_name: str, initial_state: Dict[str, Any]) -> None:
     evidence = state.get("evidence", {})
     evidence["search"] = state["search_results"]
     state["evidence"] = evidence
-
-    reasoning_output = reasoning_module.reasoning_node(state)
-    state = {**state, **reasoning_output}
-
+    
+    # Final report
     report_output = report_module.report_node(state)
     state = {**state, **report_output}
 
-    print(json.dumps(state, ensure_ascii=False, indent=2))
+    # Print summary
+    print("\nState after pipeline:")
+    print(json.dumps({
+        "reasoning_step": state.get("reasoning", {}).get("next_step"),
+        "final_output": state.get("final_output")[:100] if state.get("final_output") else None
+    }, ensure_ascii=False, indent=2))
 
 
 def main():

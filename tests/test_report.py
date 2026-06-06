@@ -22,7 +22,8 @@ def _ensure_mock_service(module_name: str, functions: Dict[str, Any]) -> types.M
 
 
 def _mock_llm_invoke(prompt: str):
-    return SimpleNamespace(content='{"case_summary": "حالة طبية طارئة بحاجة لرعاية عاجلة.", "urgent_need": "دعم تكاليف علاج عاجل", "severity": "عالي", "key_evidence": "وثيقة طبية وصورة روشتة", "concerns": ["تأكيد المعلومات الطبية","تاريخ المرض غير واضح"], "recommended_action": "قبول الدعم المالي العاجل وتحويل للمستشفى المناسب", "support_options": ["مساعدة مالية كاملة","تحويل لمستشفى / جهة"], "suggested_next_steps": ["التواصل مع وحدة الدعم الطبي","الحصول على تقرير طبي إضافي"], "confidence": 0.9, "admin_summary": "اطلب دعم عاجل مع متابعة طبية"}')
+    # Return report format
+    return SimpleNamespace(content='{"case_summary": "حالة طبية طارئة بحاجة لرعاية عاجلة.", "urgent_need": "دعم تكاليف علاج عاجل", "severity": "عالي", "key_evidence": "وثيقة طبية", "concerns": [], "recommended_action": "قبول الدعم المالي العاجل", "support_options": ["مساعدة مالية كاملة"], "suggested_next_steps": ["التواصل مع وحدة الدعم"], "confidence": 0.9, "admin_summary": "اطلب دعم عاجل"}')
 
 
 def import_report_module():
@@ -48,22 +49,33 @@ def run_case(case_name: str, state: Dict[str, Any]) -> None:
 def main():
     cases = [
         {
-            "name": "Report generation with reasoning output",
+            "name": "Report generation with clear reasoning",
             "state": {
                 "normalized_case": {"extracted_text": "الشكوى تشير لاحتياج طبي عاجل"},
                 "evidence": {
                     "cold_acquisition": {"overall_risk_level": "high"},
                     "vqa_analysis": {"results": [{"question": "ما محتوى الصورة؟", "answer": "روشتة"}]}
                 },
-                "reasoning": {"final_decision": {"decision": "قبول", "reasoning": "دعم طبي عاجل."}}
+                "reasoning": {
+                    "next_step": "report",
+                    "question_or_query": "",
+                    "reasoning": "المعلومات كافية لاصدار التقرير"
+                }
             }
         },
         {
-            "name": "Report generation with incomplete reasoning",
+            "name": "Report generation with search results",
             "state": {
-                "normalized_case": {"extracted_text": "طلب مساعدة مالية.", "image_count": 0},
-                "evidence": {},
-                "reasoning": {"final_decision": {"decision": "needs review", "reasoning": "معلومات ناقصة."}}
+                "normalized_case": {"extracted_text": "طلب دعم لشراء دواء."},
+                "evidence": {
+                    "cold_acquisition": {"overall_risk_level": "medium"},
+                    "search": {"pricing": [{"item": "دواء", "price": "50-100"}]}
+                },
+                "reasoning": {
+                    "next_step": "report",
+                    "question_or_query": "",
+                    "reasoning": "جميع المعلومات متاحة للتقرير"
+                }
             }
         }
     ]

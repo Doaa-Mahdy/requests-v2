@@ -8,6 +8,11 @@ from app.nodes.reasoning import reasoning_node
 from app.nodes.report import report_node
 from app.agents.search import search_agent
 
+
+def decide_next_step(state: CaseState):
+    step = state.get("reasoning", {}).get("next_step")
+    return step if step in {"vqa", "search", "report"} else "report"
+
 builder = StateGraph(CaseState)
 
 builder.add_node("intake", intake_node)
@@ -20,10 +25,20 @@ builder.add_node("report", report_node)
 builder.set_entry_point("intake")
 
 builder.add_edge("intake", "evidence")
-builder.add_edge("evidence", "vqa")
-builder.add_edge("vqa", "search")
+builder.add_edge("evidence", "reasoning")
+
+builder.add_conditional_edges(
+    "reasoning",
+    decide_next_step,
+    {
+        "vqa": "vqa",
+        "search": "search",
+        "report": "report"
+    }
+)
+
+builder.add_edge("vqa", "reasoning")
 builder.add_edge("search", "reasoning")
-builder.add_edge("reasoning", "report")
 builder.add_edge("report", END)
 
 graph = builder.compile()

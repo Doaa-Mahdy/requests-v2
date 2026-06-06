@@ -53,13 +53,32 @@ def run_case(case_name: str, state: Dict[str, Any]) -> None:
 
 
 def main():
-    state = {
-        "text": "أحتاج معلومات عن دواء مسكن للألم بعد حادث.",
-        "images": [],
-        "evidence": {}
-    }
-
-    run_case("Search agent wrapper", state)
+    cases = [
+        {
+            "name": "Search for drug information",
+            "state": {
+                "text": "بحث عن دواء الأسبرين وسعره.",
+                "images": [],
+                "evidence": {},
+                "reasoning": {
+                    "next_step": "search",
+                    "question_or_query": "سعر وبدائل الأسبرين"
+                }
+            }
+        },
+        {
+            "name": "Search for medical case",
+            "state": {
+                "text": "مريض يعاني من صداع بعد ربط نسيب؏",
+                "images": [],
+                "evidence": {},
+                "reasoning": {
+                    "next_step": "search",
+                    "question_or_query": "علاج الصداع بعد ربط نسيبي"
+                }
+            }
+        }
+    ]
 
 
 if __name__ == "__main__":

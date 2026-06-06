@@ -145,9 +145,10 @@ compiled_search_agent = sub_builder.compile()
 # --- THE INTERFACE NODE FOR THE MAIN GRAPH ---
 def search_agent(state: CaseState) -> dict:
     """The wrapper function imported by the main orchestrator graph."""
+    query = state.get("reasoning", {}).get("question_or_query", state.get("text", ""))
     sub_graph_input = {
-        "text": state["text"],
-        "messages": [HumanMessage(content=state["text"])],
+        "text": query,
+        "messages": [HumanMessage(content=query)],
         "search_results": {},
         "loop_count": 0
     }
