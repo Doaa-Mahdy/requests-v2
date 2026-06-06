@@ -1,114 +1,76 @@
-import importlib
-import os
-import sys
-import types
-from typing import Any, Dict, List
 import sys
 import os
+import unittest
+from typing import Dict, Any
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from app.nodes.vqa import vqa_node
 
-def import_vqa_module():
-    import app.services.vqa as vqa_service
-    return vqa_service
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
+class TestVQAModule(unittest.TestCase):
 
+    def setUp(self):
+        """إعداد بيئة الاختبار قبل كل حالة."""
+        self.sample_image = "data/test_image.jpg"
+        os.makedirs("data", exist_ok=True)
+        if not os.path.exists(self.sample_image):
+            with open(self.sample_image, "w") as f:
+                f.write("dummy content")
 
-def _ensure_mock_service(module_name: str, functions: Dict[str, Any]) -> types.ModuleType:
-    if module_name in sys.modules:
-        return sys.modules[module_name]
-
-    module = types.ModuleType(module_name)
-    for name, func in functions.items():
-        setattr(module, name, func)
-    sys.modules[module_name] = module
-    return module
-
-
-def _mock_answer_three_questions_batch(*args, **kwargs):
-    questions = kwargs.get("questions") or []
-    image_paths = kwargs.get("image_paths") or (args[0] if len(args) > 0 else [])
-    if not image_paths:
-        return []
-
-    return [
-        {
-            "image_path": image_paths[0],
-            "results": [
-                {"question": q, "answer": f"mock answer for {q}", "confidence": 0.95}
-                for q in questions
-            ]
+    def test_vqa_single_image(self):
+        """اختبار الحالة: صورة واحدة مع أسئلة افتراضية."""
+        state = {
+            "text": "تحقق من الصورة",
+            "images": [self.sample_image],
+            "evidence": {},
+            "reasoning": {}
         }
-    ]
+        result = vqa_node(state)
+        self.assertIn("vqa_analysis", result["evidence"])
+        print("\n✅ Test VQA Single Image: Passed")
 
-
-def import_vqa_module():
-    _ensure_mock_service(
-        "app.services.vqa",
-        {"answer_three_questions_batch": _mock_answer_three_questions_batch}
-    )
-    module = importlib.import_module("app.nodes.vqa")
-    import app.services.vqa as vqa_service
-    vqa_service.answer_three_questions_batch = _mock_answer_three_questions_batch
-    return module
-
-
-def create_dummy_image(path: str) -> None:
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        f.write("dummy image content")
-
-
-def run_case(case_name: str, state: Dict[str, Any]) -> None:
-    vqa_module = import_vqa_module()
-    result = vqa_module.vqa_node(state)
-    print(f"\n=== {case_name} ===")
-    print(result)
-
-
-def main():
-    sample_image_1 = "data/img55.jpg"
-    sample_image_2 = "data/prescription.jpg"
-    create_dummy_image(sample_image_1)
-    create_dummy_image(sample_image_2)
-
-    cases = [
-        {
-            "name": "VQA with single image and default questions",
-            "state": {
-                "text": "تحقق من محتوى الصورة.",
-                "images": [sample_image_1],
-                "evidence": {},
-                "reasoning": {}
-            }
-        },
-        {
-            "name": "VQA with multiple images and specific question",
-            "state": {
-                "text": "اسم الدواء والجرعة؏",
-                "images": [sample_image_1, sample_image_2],
-                "evidence": {},
-                "reasoning": {
-                    "question_or_query": "ما اسم الدواء المريب في هذه الروشتة؟"
+    def test_vqa_multiple_images(self):
+        """اختبار الحالة: صور متعددة مع أسئلة محددة."""
+        state = {
+            "text": "تحليل الأدوية",
+            "images": [self.sample_image, self.sample_image],
+            "evidence": {},
+            "reasoning": {
+                "instruction": {
+                    "query_or_question": "ما اسم الدواء الظاهر؟"
                 }
             }
-        },
-        {
-            "name": "VQA with no images",
-            "state": {
-                "text": "لا يوجد صور.",
-                "images": [],
-                "evidence": {},
-                "reasoning": {}
-            }
         }
-    ]
+        result = vqa_node(state)
+        self.assertGreaterEqual(len(result["evidence"]["vqa_analysis"]), 1)
+        print("✅ Test VQA Multiple Images: Passed")
 
-    for case in cases:
-        run_case(case["name"], case["state"])
+    def test_vqa_no_images(self):
+        """اختبار الحالة: عدم وجود صور (يجب أن يتعامل النظام بمرونة)."""
+        state = {
+            "text": "لا توجد صور",
+            "images": [],
+            "evidence": {},
+            "reasoning": {}
+        }
+        # نتوقع ألا ينهار النظام
+        try:
+            result = vqa_node(state)
+            self.assertEqual(result["evidence"]["vqa_analysis"], [])
+            print("✅ Test VQA No Images: Passed")
+        except Exception as e:
+            self.fail(f"vqa_node failed with no images: {e}")
 
+    def test_vqa_invalid_image_path(self):
+        """اختبار الحالة: مسار صورة غير موجود."""
+        state = {
+            "text": "صورة خاطئة",
+            "images": ["non_existent.jpg"],
+            "evidence": {},
+            "reasoning": {}
+        }
+        result = vqa_node(state)
+        self.assertIn("error", str(result["evidence"]))
+        print("✅ Test VQA Invalid Image Path: Passed")
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    unittest.main()
