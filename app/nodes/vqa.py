@@ -58,10 +58,11 @@ def vqa_node(state: CaseState) -> dict:
     summary_text = "\n".join(summary_results)
 
     inquiry_history = inquiry_history + [{
-        "role": "assistant", # إضافة role ليتوافق مع LangChain
-        "content": f"تم تحليل الصور. النتائج: {summary_text}" # تمرير نص فقط وليس قاموس
-    }]
-
+    "type": "vqa",
+    "target": question or "general_image_analysis",
+    "content": summary_text
+}]
+    
     return {
         "evidence": evidence,
         "inquiry_history": inquiry_history

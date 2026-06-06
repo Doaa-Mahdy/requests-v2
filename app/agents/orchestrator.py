@@ -6,34 +6,42 @@ from app.nodes.vqa import vqa_node
 from app.nodes.reasoning import reasoning_node
 from app.nodes.report import report_node
 from app.agents.search import search_agent
-
 def decide_next_step(state: CaseState):
+    loop_count = state.get("loop_count", 0)
+
     reasoning = state.get("reasoning", {})
-    loop_count = reasoning.get("loop_count", 0)
     next_step = reasoning.get("next_step")
-    
-    # استخراج تاريخ العمليات مع التأكد من معالجة الكائنات بشكل صحيح
+
     history = state.get("inquiry_history", [])
     last_step_type = None
-    
+
     if history:
         last_item = history[-1]
-        # إذا كان العنصر عبارة عن قاموس، استخدم get
+
         if isinstance(last_item, dict):
             last_step_type = last_item.get("type")
-        # إذا كان كائناً من LangChain، نحاول استخراج النوع منه أو تجاهله
-        elif hasattr(last_item, "type"):
-            last_step_type = getattr(last_item, "type", None)
 
-    # شرط الأمان: إذا تجاوزنا 3 دورات أو طلب الـ LLM التقرير
-    if loop_count >= 3 or next_step == "report":
+    # stop after 3 tool calls
+    if loop_count >= 3:
         return "report"
-    
-    # شرط منع التكرار: إذا كانت الأداة المطلوبة هي نفس الأداة الأخيرة
-    if last_step_type and next_step == last_step_type and next_step in {"vqa", "search"}:
+
+    # LLM explicitly requested report
+    if next_step == "report":
         return "report"
-    
-    return next_step if next_step in {"vqa", "search", "report"} else "report"
+
+    # prevent same tool repeatedly
+    if (
+        last_step_type
+        and next_step == last_step_type
+        and next_step in {"vqa", "search"}
+    ):
+        return "report"
+
+    return next_step if next_step in {
+        "vqa",
+        "search",
+        "report"
+    } else "report"
 
 builder = StateGraph(CaseState)
 builder.add_node("intake", intake_node)

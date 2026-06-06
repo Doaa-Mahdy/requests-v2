@@ -159,7 +159,16 @@ def search_agent(state: CaseState) -> dict:
     current_evidence = state.get("evidence") if isinstance(state.get("evidence"), dict) else {}
     current_evidence["search"] = results
     
+    history = state.get("inquiry_history", [])
+
+    history.append({
+        "type": "search",
+        "target": query,
+        "content": json.dumps(results, ensure_ascii=False)
+    })
+
     return {
         "search_results": json.dumps(results, ensure_ascii=False),
-        "evidence": current_evidence
+        "evidence": current_evidence,
+        "inquiry_history": history
     }

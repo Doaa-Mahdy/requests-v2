@@ -33,7 +33,18 @@ def reasoning_node(state: CaseState) -> dict:
     extracted_text = str(case.get('extracted_text', text))
     risk_level = str(evidence.get('cold_acquisition', {}).get('overall_risk_level', 'unknown'))
     image_count = len(images)
-    
+    history = state.get("inquiry_history", [])
+
+    history_summary = ""
+
+    if history:
+        history_summary = "\n".join(
+            f"- {item.get('type')}: {item.get('target','')}"
+            for item in history
+            if isinstance(item, dict)
+        )
+    else:
+        history_summary = "لا يوجد"
     # 2. بناء نص الـ Prompt
     prompt_text = f"""
 أنت خبير دعم اتخاذ قرار في مؤسسة خيرية. وظيفتك هي توجيه النظام (VQA أو Search) لاستكمال أي نقص، أو التقرير.
@@ -42,7 +53,7 @@ def reasoning_node(state: CaseState) -> dict:
 - الطلب: {extracted_text}
 - تقرير الأدلة (الجودة/التزييف): {risk_level}
 - عدد الصور المرفقة: {image_count}
-
+- العمليات السابقة: {history_summary}
 استخدم القواعد التالية للقرار:
 
 1. متى تستخدم VQA (أداة تحليل الصور):
@@ -87,11 +98,13 @@ def reasoning_node(state: CaseState) -> dict:
     if next_step not in {"vqa", "search", "report"}:
         next_step = "report"
     
+    current_loop = state.get("loop_count", 0) + 1
+
     return {
         "reasoning": {
             "next_step": next_step,
             "question_or_query": target,
             "reasoning": action_reasoning,
-            "loop_count": state.get("loop_count", 0) + 1
-        }
+        },
+        "loop_count": current_loop
     }
