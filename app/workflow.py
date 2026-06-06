@@ -10,8 +10,13 @@ from app.agents.search import search_agent
 
 
 def decide_next_step(state: CaseState):
-    step = state.get("reasoning", {}).get("next_step")
-    return step if step in {"vqa", "search", "report"} else "report"
+    reasoning = state.get("reasoning", {})
+    loop_count = reasoning.get("loop_count", 0)
+    
+    if loop_count >= 6 or reasoning.get("next_step") == "report":
+        return "report"
+    
+    return reasoning.get("next_step", "report")
 
 builder = StateGraph(CaseState)
 
