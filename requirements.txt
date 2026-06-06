@@ -1,0 +1,15 @@
+requests
+numpy
+Pillow
+transformers
+torch
+torchvision
+faiss-cpu
+opencv-python
+PyMuPDF
+scipy
+pydub
+word2number
+langchain-ollama
+langgraph
+pytest
