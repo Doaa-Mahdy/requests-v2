@@ -1,7 +1,13 @@
-from app.services.llm import llm
+from langchain_core.messages import HumanMessage
+from app.state import CaseState
+from app.services.llm import llm_model
 
 
-def report_node(state: dict):
+def report_node(state: CaseState) -> dict:
+    evidence = state.get("evidence", {})
+    reasoning = state.get("reasoning", {})
+    text = state.get("text", "")
+    inquiry_history = state.get("inquiry_history", [])
 
     prompt = f"""
 أنت خبير في توزيع المساعدات الإنسانية. مهمتك هي كتابة تقرير نهائي لموظف المؤسسة ليتمكن من صرف المساعدة.
@@ -20,6 +26,19 @@ def report_node(state: dict):
 
 كن متعاطفاً، عملياً، ومباشراً في خطواتك.
 
+السياق العام:
+- النص الأصلي: {{text}}
+
+نتائج الاستدلال:
+{{reasoning}}
+
+الأدلة المجمعة:
+{{evidence}}
+
+سجل العمليات:
+{{inquiry_history}}
+
+
 أخرج JSON فقط:
 {{
   "case_summary": "...",
@@ -30,7 +49,9 @@ def report_node(state: dict):
 }}
 """
 
-    response = llm.invoke(prompt)
+    response = llm_model.invoke([
+        HumanMessage(content=prompt)
+    ])
 
     return {
         "final_output": response.content
