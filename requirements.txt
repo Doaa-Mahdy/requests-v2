@@ -13,7 +13,7 @@ scipy
 # Audio/Video processing
 pydub
 ffmpeg-python
-
+soundfile
 # NLP & Language
 word2number
 ollama
