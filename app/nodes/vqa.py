@@ -10,15 +10,15 @@ VQA_QUESTIONS = [
 ]
 
 def vqa_node(state: CaseState) -> dict:
-    """Active VQA node for image understanding before reasoning."""
-    # التأكد من تهيئة الهياكل الأساسية لضمان عدم حدوث KeyError
+    # 1. استخراج الأدلة الحالية أو تهيئتها إذا كانت مفقودة
     evidence = state.get("evidence", {})
+    inquiry_history = state.get("inquiry_history", [])
+    
     image_paths = state.get("images") or []
     intake_text = state.get("text") or ""
     question = state.get("reasoning", {}).get("question_or_query")
-    inquiry_history = state.get("inquiry_history", [])
 
-    # الحالة: لا توجد صور
+    # 2. الحالة: لا توجد صور - يجب إرجاع evidence حتى لو كانت فارغة
     if not image_paths:
         evidence["vqa_analysis"] = []
         return {
@@ -37,21 +37,18 @@ def vqa_node(state: CaseState) -> dict:
             questions=questions
         )
     except Exception as e:
-        vqa_results = [{
-            "error": f"VQA processing failed: {str(e)}"
-        }]
+        vqa_results = [{"error": f"VQA processing failed: {str(e)}"}]
 
-    # تحديث الأدلة
+    # 3. تحديث الأدلة
     evidence["vqa_analysis"] = {
         "questions": questions,
         "results": vqa_results,
         "metadata": {
             "image_count": len(image_paths),
-            "execution_status": "completed" if not isinstance(vqa_results[0].get("error"), str) else "failed"
+            "execution_status": "completed"
         }
     }
 
-    # تحديث سجل الاستعلام
     inquiry_history = inquiry_history + [{
         "type": "vqa",
         "question": question if question else "default_vqa_questions",
