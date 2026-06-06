@@ -39,20 +39,27 @@ def vqa_node(state: CaseState) -> dict:
     except Exception as e:
         vqa_results = [{"error": f"VQA processing failed: {str(e)}"}]
 
-    # 3. تحديث الأدلة
+    # ... داخل دالة vqa_node ...
+    
+    # 3. تحديث الأدلة (هذا الجزء سليم لأنه يخزن البيانات الخام)
     evidence["vqa_analysis"] = {
         "questions": questions,
         "results": vqa_results,
-        "metadata": {
-            "image_count": len(image_paths),
-            "execution_status": "completed"
-        }
+        "metadata": {"image_count": len(image_paths), "execution_status": "completed"}
     }
 
+    # الحل: تحويل النتائج المعقدة إلى ملخص نصي خفيف قبل إضافتها لـ inquiry_history
+    # هذا يمنع تمرير قاموس "results" الضخم إلى الـ LLM في العقد القادمة
+    summary_results = []
+    for res in vqa_results:
+        for r in res.get("results", []):
+            summary_results.append(f"Q: {r.get('question')} -> A: {r.get('answer')}")
+    
+    summary_text = "\n".join(summary_results)
+
     inquiry_history = inquiry_history + [{
-        "type": "vqa",
-        "question": question if question else "default_vqa_questions",
-        "results": vqa_results
+        "role": "assistant", # إضافة role ليتوافق مع LangChain
+        "content": f"تم تحليل الصور. النتائج: {summary_text}" # تمرير نص فقط وليس قاموس
     }]
 
     return {
