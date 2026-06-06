@@ -5,8 +5,8 @@ if __name__ == "__main__":
     sample = {
         "request_id": "REQ-001",
         "text": "محتاج علاج فيروس سي ومش قادر أتحمل التكلفة",
-        "voice_path": None,
-        "images": ["data/img15.jpg"]
+        "voice_path": "data/v333.mp3",
+        "images": ["data/img55.jpg", "data/prescription.jpg"]
     }
 
     result = graph.invoke(sample)

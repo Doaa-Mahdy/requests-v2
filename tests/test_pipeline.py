@@ -152,10 +152,12 @@ def run_pipeline_case(case_name: str, initial_state: Dict[str, Any]) -> None:
 
 
 def main():
-    sample_audio = "data/sample_pipeline_audio.wav"
-    sample_image = "data/sample_pipeline_image.jpg"
+    sample_audio = "data/v333.mp3"
+    sample_image_1 = "data/img55.jpg"
+    sample_image_2 = "data/prescription.jpg"
     _create_dummy_file(sample_audio)
-    _create_dummy_file(sample_image)
+    _create_dummy_file(sample_image_1)
+    _create_dummy_file(sample_image_2)
 
     cases: List[Dict[str, Any]] = [
         {
@@ -163,7 +165,7 @@ def main():
             "state": {
                 "text": "الشكوى: مريض يحتاج دواء لعلاج ألم الحوض بعد حادث.",
                 "voice_path": sample_audio,
-                "images": [sample_image],
+                "images": [sample_image_1, sample_image_2],
                 "user_id": "pipeline_user_1",
                 "request_category": "medical",
                 "evidence": {}

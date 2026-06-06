@@ -50,8 +50,9 @@ def run_case(case_name: str, state: Dict[str, Any]) -> None:
 
 
 def main():
-    sample_audio = "v333.mp3"
-    sample_image = "data/prescription.jpg"
+    sample_audio = "data/v333.mp3"
+    sample_image_1 = "data/img55.jpg"
+    sample_image_2 = "data/prescription.jpg"
  
     cases = [
         {
@@ -81,7 +82,7 @@ def main():
             "state": {
                 "text": "",
                 "voice_path": None,
-                "images": [sample_image],
+                "images": [sample_image_1, sample_image_2],
                 "user_id": "test_user_3",
                 "request_category": "medical",
                 "evidence": {}
@@ -91,8 +92,8 @@ def main():
             "name": "Combined text + image input",
             "state": {
                 "text": "شاب محتاج كرسي متحرك بعد حادث.",
-                "voice_path": None,
-                "images": [sample_image],
+                "voice_path": sample_audio,
+                "images": [sample_image_1, sample_image_2],
                 "user_id": "test_user_4",
                 "request_category": "medical",
                 "evidence": {}
