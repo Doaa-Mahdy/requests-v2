@@ -41,11 +41,6 @@ COPY . .
 # =========================
 ENV TRANSFORMERS_OFFLINE=1
 ENV OLLAMA_HOST=http://localhost:11434
-ENV FRAUD_MODEL_PATH=/app/models/fraud_detection
-ENV CLIP_MODEL_PATH=/app/models/clip_vit
-ENV STT_MODEL_PATH=/app/models/stt_model
-ENV VQA_MODEL_PATH=/app/models/qwen_vl
-
 # =========================
 # Entrypoint
 # =========================

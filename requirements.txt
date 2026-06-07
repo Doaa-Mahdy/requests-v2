@@ -5,6 +5,7 @@ huggingface_hub
 transformers
 accelerate
 safetensors
+Pillow
 
 # Audio/Video processing
 pydub
