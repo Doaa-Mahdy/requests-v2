@@ -1,18 +1,18 @@
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Optional
 import json
 import torch
 from PIL import Image
-from transformers import AutoProcessor
-from transformers import Qwen2VLForConditionalGeneration
+from transformers import AutoProcessor, Qwen2VLForConditionalGeneration
 import os
 import base64
 
 # ============================================================================
-# GLOBAL MODEL LOADING (LOAD ONCE)
+# GLOBAL MODEL LOADING (SINGLETON)
 # ============================================================================
 
 _model = None
 _processor = None
+
 
 def get_vqa_model():
     global _model, _processor
@@ -40,11 +40,17 @@ def get_vqa_model():
         print("[VQA] Model loaded successfully.")
 
     return _model, _processor
- 
 
+
+# ============================================================================
+# CORE VQA INFERENCE
+# ============================================================================
 
 def run_vqa(image_path: str, question: str) -> str:
     image = Image.open(image_path).convert("RGB")
+
+    model, processor = get_vqa_model()
+
     messages = [
         {
             "role": "user",
@@ -55,26 +61,33 @@ def run_vqa(image_path: str, question: str) -> str:
         }
     ]
 
-
-    model, processor = get_vqa_model()
     prompt = processor.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True
     )
+
     device = next(model.parameters()).device
+
     inputs = processor(
         text=[prompt],
         images=[image],
         return_tensors="pt",
         padding=True
-    ).to(device)
+    )
+
+    # safer device move
+    inputs = {
+        k: v.to(device) if hasattr(v, "to") else v
+        for k, v in inputs.items()
+    }
 
     with torch.inference_mode():
-        output_ids = QWEN_MODEL.generate(**inputs, max_new_tokens=128)
+        output_ids = model.generate(**inputs, max_new_tokens=128)
 
-    generated = output_ids[0][inputs.input_ids.shape[1]:]
-    answer = QWEN_PROCESSOR.decode(
+    generated = output_ids[0][inputs["input_ids"].shape[1]:]
+
+    answer = processor.decode(
         generated,
         skip_special_tokens=True
     )
@@ -83,7 +96,7 @@ def run_vqa(image_path: str, question: str) -> str:
 
 
 # ============================================================================
-# MAIN VQA FUNCTIONS
+# QUESTION PIPELINE
 # ============================================================================
 
 def answer_questions(
@@ -169,6 +182,7 @@ def answer_single_question(
     try:
         raw_answer = run_vqa(image_path, full_question)
         parsed = parse_vqa_response(raw_answer, question)
+
     except Exception as e:
         return {
             "question": question,
@@ -185,18 +199,17 @@ def answer_single_question(
     }
 
 
+# ============================================================================
+# BATCH MODE
+# ============================================================================
+
 def answer_three_questions_batch(
     image_paths: List[str],
     ocr_texts: List[str],
     description: str,
     questions: List[str]
 ) -> List[Dict[str, Any]]:
-    """
-    Runs Qwen2-VL on multiple images for the 3 predefined questions.
-    Uses vqa_3questions.json questions by default.
 
-    Returns a list of dictionaries, each corresponding to one image.
-    """
     batch_results = []
 
     for idx, image_path in enumerate(image_paths):
@@ -204,12 +217,13 @@ def answer_three_questions_batch(
         results = []
 
         for q in questions:
-            # Add OCR comparison context for contradiction/agreement questions
+
             context = description
+
             if "تناقض" in q:
-                context += f"\n\nقارن النص المرفق بالصورة (OCR):\n{ocr_text}\nأجب بنعم/لا أو صياغة قصيرة تبين وجود تناقض."
+                context += f"\n\nOCR:\n{ocr_text}"
             elif "يتفق" in q:
-                context += f"\n\nقارن النص المرفق بالصورة (OCR):\n{ocr_text}\nأجب بنعم إذا النص يتفق مع الصورة، لا إذا لا يتفق."
+                context += f"\n\nOCR:\n{ocr_text}"
 
             prompt = create_vqa_prompt(
                 question=q,
@@ -220,11 +234,15 @@ def answer_three_questions_batch(
             try:
                 answer = run_vqa(image_path, prompt)
                 parsed = parse_vqa_response(answer, q)
-            except Exception as e:
-                parsed = {"answer": "", "confidence": 0.0, "reasoning": f"VQA error: {str(e)}"}
 
-            # Boost confidence if answer is clear yes/no
-            if ("نعم" in parsed["answer"] or "لا" in parsed["answer"] or "لا يوجد تناقض" in parsed["answer"]):
+            except Exception as e:
+                parsed = {
+                    "answer": "",
+                    "confidence": 0.0,
+                    "reasoning": f"VQA error: {str(e)}"
+                }
+
+            if any(x in parsed["answer"] for x in ["نعم", "لا", "غير"]):
                 parsed["confidence"] = 0.95
 
             results.append({
@@ -243,20 +261,71 @@ def answer_three_questions_batch(
 
 
 # ============================================================================
-# HELPER FUNCTIONS
+# HELPERS
 # ============================================================================
 
-def select_category_questions(
-    category: str,
-    all_questions: Dict[str, List[str]],
-    num_questions: int = 5
-) -> List[str]:
+def select_category_questions(category: str, all_questions: Dict[str, List[str]], num_questions: int = 5):
     if category not in all_questions:
         raise ValueError(f"Unknown category: {category}")
 
-    questions = all_questions[category]
-    return questions[:num_questions]
+    return all_questions[category][:num_questions]
 
+
+def create_vqa_prompt(question: str, ocr_text: str = "", context: str = "", category: str = "") -> str:
+
+    parts = []
+
+    if category:
+        parts.append(f"التصنيف: {category}")
+
+    if context:
+        parts.append(f"السياق:\n{context}")
+
+    if ocr_text:
+        parts.append(f"OCR:\n{ocr_text}")
+
+    parts.append(f"السؤال:\n{question}")
+
+    parts.append(
+        "- إذا غير واضح قل غير واضح\n"
+        "- لا تخمن\n"
+        "- أجب بإيجاز"
+    )
+
+    return "\n\n".join(parts)
+
+
+def parse_vqa_response(response: str, question: str) -> Dict[str, Any]:
+
+    response = response.strip()
+
+    if not response:
+        return {
+            "answer": "",
+            "confidence": 0.0,
+            "reasoning": "Empty response"
+        }
+
+    low_conf = ["غير واضح", "لا يمكن", "غير معروف", "لا أستطيع"]
+
+    confidence = 0.9
+
+    if any(x in response for x in low_conf):
+        confidence = 0.4
+
+    if len(response.split()) <= 3:
+        confidence = min(confidence + 0.05, 0.95)
+
+    return {
+        "answer": response,
+        "confidence": round(confidence, 2),
+        "reasoning": "Parsed Qwen response"
+    }
+
+
+# ============================================================================
+# OPTIONAL UTILITIES
+# ============================================================================
 
 def load_image(image_path: str):
     if not os.path.exists(image_path):
@@ -265,146 +334,35 @@ def load_image(image_path: str):
 
 
 def encode_image_for_api(image_path: str) -> str:
-    """
-    Encode image as base64 for API transmission
-    """
-    if not os.path.exists(image_path):
-        raise FileNotFoundError(f"Image not found: {image_path}")
-
-    with open(image_path, "rb") as img_file:
-        encoded_bytes = base64.b64encode(img_file.read())
-
-    return encoded_bytes.decode("utf-8")
-
-
-def create_vqa_prompt(
-    question: str,
-    ocr_text: str = "",
-    context: str = "",
-    category: str = ""
-) -> str:
-    """
-    Create prompt for VQA model
-    """
-
-    prompt_parts = []
-
-    if category:
-        prompt_parts.append(
-            f"التصنيف: {category}\n"
-            "أجب بدقة وبناءً فقط على ما يظهر في الصورة."
-        )
-
-    if context:
-        prompt_parts.append(f"السياق:\n{context}")
-
-    if ocr_text:
-        prompt_parts.append(
-            "نص مستخرج من الصورة (قد يساعدك في الإجابة):\n"
-            f"{ocr_text}"
-        )
-
-    prompt_parts.append(f"السؤال:\n{question}")
-
-    prompt_parts.append(
-        "التعليمات:\n"
-        "- إذا لم تكن الإجابة واضحة من الصورة، قل (غير واضح)\n"
-        "- لا تفترض معلومات غير موجودة\n"
-        "- أجب بإيجاز ووضوح"
-    )
-
-    return "\n\n".join(prompt_parts)
-
-
-def parse_vqa_response(response: str, question: str) -> Dict[str, Any]:
-    """
-    Parse VQA model response into structured output
-    """
-
-    response = response.strip()
-
-    if not response:
-        return {
-            "answer": "",
-            "confidence": 0.0,
-            "reasoning": "Empty response from model"
-        }
-
-    # Heuristic confidence estimation
-    low_confidence_phrases = [
-        "غير واضح",
-        "لا يمكن",
-        "غير معروف",
-        "لا يظهر",
-        "لا أستطيع"
-    ]
-
-    confidence = 0.9
-    for phrase in low_confidence_phrases:
-        if phrase in response:
-            confidence = 0.4
-            break
-
-    # Short direct answers are usually more confident
-    if len(response.split()) <= 3:
-        confidence = min(confidence + 0.05, 0.95)
-
-    return {
-        "answer": response,
-        "confidence": round(confidence, 2),
-        "reasoning": "Parsed from Qwen2-VL response"
-    }
+    with open(image_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
 # ============================================================================
-# ERROR HANDLING
-# ============================================================================
-
-class VQAError(Exception):
-    """Base exception for VQA processing errors"""
-    pass
-
-
-class ImageProcessingError(VQAError):
-    """Exception for image processing errors"""
-    pass
-
-
-class APIError(VQAError):
-    """Exception for API-related errors"""
-    pass
-
-
-# ============================================================================
-# MAIN EXECUTION
+# TEST ENTRYPOINT
 # ============================================================================
 
 if __name__ == '__main__':
-    # Load the 3 predefined questions from vqa_3questions.json
+
     QUESTIONS3_JSON = "data/vqa_3questions.json"
-    
+
     with open(QUESTIONS3_JSON, "r", encoding="utf-8") as f:
         questions3 = json.load(f)
-    
-    # Example test configuration
+
     TEST_IMAGE_PATHS = ["ta7lel.jpg"]
     TEST_OCR_TEXTS = ["Male 20 year kidney functions , lipids profile"]
-    text_description = "تحليل وظائف كبد"
-    
-    print(f"Loaded {len(questions3)} questions from {QUESTIONS3_JSON}")
-    print(f"Questions: {questions3}")
-    
-    # Run VQA on images with the 3 questions
-    three_q_output = answer_three_questions_batch(
+    description = "تحليل وظائف كبد"
+
+    print(f"Loaded {len(questions3)} questions")
+
+    result = answer_three_questions_batch(
         image_paths=TEST_IMAGE_PATHS,
         ocr_texts=TEST_OCR_TEXTS,
-        description=text_description,
+        description=description,
         questions=questions3
     )
-    
-    # Save results to JSON
+
     with open("vqa_three_questions.json", "w", encoding="utf-8") as f:
-        json.dump(three_q_output, f, ensure_ascii=False, indent=2)
-    
-    print("✅ VQA processing completed successfully")
-    print("📄 Results saved to vqa_three_questions.json")
+        json.dump(result, f, ensure_ascii=False, indent=2)
+
+    print("DONE")

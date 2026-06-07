@@ -1,7 +1,8 @@
 import os
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from app.state import CaseState
 from app.services.vqa import answer_three_questions_batch
+
 
 VQA_QUESTIONS = [
     "ما هو مضمون هذه الصورة؟",
@@ -9,26 +10,53 @@ VQA_QUESTIONS = [
     "هل يوجد أي مؤشر على أن الصورة عبارة عن وثيقة طبية أو إيصال دعم مالي؟"
 ]
 
-def vqa_node(state: CaseState) -> dict:
-    # 1. استخراج الأدلة الحالية أو تهيئتها إذا كانت مفقودة
-    evidence = state.get("evidence", {})
-    inquiry_history = state.get("inquiry_history", [])
-    
+
+def vqa_node(state: CaseState) -> Dict[str, Any]:
+    # --------------------------------------------------
+    # 1. SAFE STATE EXTRACTION
+    # --------------------------------------------------
+    evidence = state.get("evidence") or {}
+    inquiry_history = state.get("inquiry_history") or []
+
     image_paths = state.get("images") or []
     intake_text = state.get("text") or ""
+
     question = state.get("reasoning", {}).get("question_or_query")
 
-    # 2. الحالة: لا توجد صور - يجب إرجاع evidence حتى لو كانت فارغة
+    # Normalize question into a list safely
+    if isinstance(question, list):
+        questions = question
+    elif isinstance(question, str) and question.strip():
+        questions = [question]
+    else:
+        questions = VQA_QUESTIONS
+
+    # --------------------------------------------------
+    # 2. NO IMAGES CASE
+    # --------------------------------------------------
     if not image_paths:
-        evidence["vqa_analysis"] = []
+        evidence["vqa_analysis"] = {
+            "questions": questions,
+            "results": [],
+            "metadata": {
+                "image_count": 0,
+                "execution_status": "skipped"
+            }
+        }
+
         return {
             "evidence": evidence,
             "inquiry_history": inquiry_history
         }
 
+    # --------------------------------------------------
+    # 3. PREP OCR CONTEXT
+    # --------------------------------------------------
     ocr_texts = [intake_text] * len(image_paths)
-    questions = [question] if question else VQA_QUESTIONS
 
+    # --------------------------------------------------
+    # 4. RUN VQA (SAFE)
+    # --------------------------------------------------
     try:
         vqa_results = answer_three_questions_batch(
             image_paths=image_paths,
@@ -36,33 +64,60 @@ def vqa_node(state: CaseState) -> dict:
             description="تحليل صور الطلب والتناسق مع نص الشكوى",
             questions=questions
         )
-    except Exception as e:
-        vqa_results = [{"error": f"VQA processing failed: {str(e)}"}]
+        status = "completed"
 
-    # ... داخل دالة vqa_node ...
-    
-    # 3. تحديث الأدلة (هذا الجزء سليم لأنه يخزن البيانات الخام)
+    except Exception as e:
+        vqa_results = [{"error": str(e)}]
+        status = "failed"
+
+    # --------------------------------------------------
+    # 5. STORE RAW EVIDENCE
+    # --------------------------------------------------
     evidence["vqa_analysis"] = {
         "questions": questions,
         "results": vqa_results,
-        "metadata": {"image_count": len(image_paths), "execution_status": "completed"}
+        "metadata": {
+            "image_count": len(image_paths),
+            "execution_status": status
+        }
     }
 
-    # الحل: تحويل النتائج المعقدة إلى ملخص نصي خفيف قبل إضافتها لـ inquiry_history
-    # هذا يمنع تمرير قاموس "results" الضخم إلى الـ LLM في العقد القادمة
+    # --------------------------------------------------
+    # 6. BUILD SAFE SUMMARY FOR LLM (IMPORTANT)
+    # --------------------------------------------------
     summary_results = []
+
     for res in vqa_results:
+        if not isinstance(res, dict):
+            continue
+
         for r in res.get("results", []):
-            summary_results.append(f"Q: {r.get('question')} -> A: {r.get('answer')}")
-    
+            if not isinstance(r, dict):
+                continue
+
+            q = r.get("question", "")
+            a = r.get("answer", "")
+
+            summary_results.append(f"Q: {q} -> A: {a}")
+
     summary_text = "\n".join(summary_results)
 
+    # --------------------------------------------------
+    # 7. UPDATE INQUIRY HISTORY (SAFE + LIGHTWEIGHT)
+    # --------------------------------------------------
     inquiry_history = inquiry_history + [{
-    "type": "vqa",
-    "target": question or "general_image_analysis",
-    "content": summary_text
-}]
-    
+        "type": "vqa",
+        "target": (
+            "multi_question_vqa"
+            if len(questions) > 1
+            else questions[0] if questions else "general_image_analysis"
+        ),
+        "content": summary_text
+    }]
+
+    # --------------------------------------------------
+    # 8. RETURN STATE UPDATE
+    # --------------------------------------------------
     return {
         "evidence": evidence,
         "inquiry_history": inquiry_history
