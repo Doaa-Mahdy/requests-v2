@@ -46,7 +46,7 @@ def reasoning_node(state: CaseState) -> dict:
     else:
         history_summary = "لا يوجد"
         # 2. بناء نص الـ Prompt
-        prompt_text = f"""
+    prompt_text = f"""
     أنت نظام تخطيط جمع معلومات لمؤسسة خيرية إنسانية.
 
     مهمتك: تحديد أفضل خطوة لجمع المعلومات، مع تحديد "ماذا يجب أن نعرف بالضبط" قبل اتخاذ القرار.
