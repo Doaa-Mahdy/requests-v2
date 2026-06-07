@@ -1,32 +1,38 @@
-FROM python:3.11-slim
+# 1. Use the official Ollama image as the base
+FROM ollama/ollama:latest
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y curl ffmpeg && rm -rf /var/lib/apt/lists/*
-
-# Install Ollama
-RUN curl -fsSL https://ollama.com/install.sh | sh
+# 2. Install Python and other necessary system tools
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    curl \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# 3. Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- PRE-CACHE HUGGINGFACE MODELS ---
-COPY app/scripts/ /app/scripts/
-RUN python3 /app/scripts/download_models.py
-# Copy the rest of your app
+# 4. Copy your app code
 COPY . .
 
-# Set environment to prevent HF from downloading at runtime
-# These are the paths where your script downloaded them
+# 5. Pre-cache your non-Ollama models (Fraud, CLIP, etc.)
+# Ensure your download_models.py script saves them to /app/models/
+RUN python3 app/scripts/download_models.py
+
+# 6. Set environment variables
+ENV TRANSFORMERS_OFFLINE=1
 ENV FRAUD_MODEL_PATH=/app/models/fraud_detection
 ENV CLIP_MODEL_PATH=/app/models/clip_vit
 ENV STT_MODEL_PATH=/app/models/stt_model
 ENV VQA_MODEL_PATH=/app/models/qwen_vl
 
-# This forces everything to be local only
-ENV TRANSFORMERS_OFFLINE=1
-
-# Start script
+# 7. Use the entrypoint
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
+
+# The Ollama image already defines an ENTRYPOINT, 
+# but we override it to run our own logic.
 ENTRYPOINT ["./entrypoint.sh"]
