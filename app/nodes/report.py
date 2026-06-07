@@ -102,15 +102,15 @@ def report_node(state: CaseState) -> dict:
 ━━━━━━━━━━━━━━━━━━━━━━
 
 {{
-  "case_synthesis": "وصف موحد للحالة بناءً على الأدلة فقط",
-  "claim_interpretation": "ما الذي يحتاجه الشخص فعلياً",
+  "case_synthesis": "وصف موحد للحالة بناءً على الأدلة البصريه فقط",
+  "claim_interpretation": " ما الذي يحتاجه الشخص فعلياً مع توضيح مصدر المعلومه في كلمه",
   "evidence_map": {{
-    "text": ["الأدلة النصية"],
-    "images": ["الأدلة البصرية إن وجدت"],
-    "search": ["نتائج البحث إن وجدت"]
+    "text": ["ملخص مختصر للغايه للأدلة النصية"],
+    "images": ["ملخص مختصر للغايه للأدلة البصرية"],
+    "search": ["نتائج البحث باختصار شديد إن وجدت"]
   }},
   "consistency_check": {{
-    "consistent": true,
+    "consistent": true/false,
     "conflicts": ["أي تناقضات إن وجدت"],
     "missing_gaps": ["أي معلومات ناقصة"]
   }},
