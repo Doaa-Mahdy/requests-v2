@@ -11,11 +11,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # --- PRE-CACHE HUGGINGFACE MODELS ---
-# Create a script to download models to a local directory
-# Copy the entire scripts directory so all internal references work
-COPY scripts/ /app/scripts/
-
-# Run the script from its new location
+COPY app/scripts/ /app/scripts/
 RUN python3 /app/scripts/download_models.py
 # Copy the rest of your app
 COPY . .
