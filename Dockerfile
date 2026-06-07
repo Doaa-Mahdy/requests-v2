@@ -37,19 +37,6 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY . .
 
 # =========================
-# Pre-download python models (safe)
-# =========================
-RUN python app/scripts/download_models.py
-
-# =========================
-# Ollama model preload (IMPORTANT FIX)
-# =========================
-RUN ollama serve >/tmp/ollama.log 2>&1 & \
-    sleep 15 && \
-    ollama pull qwen2.5:7b && \
-    pkill ollama || true
-
-# =========================
 # Environment
 # =========================
 ENV TRANSFORMERS_OFFLINE=1

@@ -1,33 +1,23 @@
-# Core runtime
-runpod
-requests
-numpy
-Pillow
-
-# LangChain + LangGraph (for Ollama integration)
-langchain-core
-langchain-ollama
-langgraph
-
-# Search / retrieval
-tavily-python
-rapidfuzz
-
-# ML utilities
-scipy
-accelerate
-
-# Vision / OCR / embeddings
-faiss-cpu
 opencv-python
 PyMuPDF
+scipy
+huggingface_hub
+transformers
+accelerate
+safetensors
 
-# Audio
+# Audio/Video processing
 pydub
+ffmpeg-python
 soundfile
-
-# General NLP utils
+# NLP & Language
 word2number
+ollama
+langchain-ollama
+langgraph
+langchain-core
+tavily
+rapidfuzz
 
 # Testing
 pytest
