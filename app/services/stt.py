@@ -21,8 +21,10 @@ logger = logging.getLogger(__name__)
 # Initialize Hugging Face Pipeline for Transcription
 try:
     logger.info("Loading Egyptian Arabic Wav2Vec2 model...")
-    model_path = os.environ.get("STT_MODEL_PATH", "IbrahimAmin/egyptian-arabic-wav2vec2-xlsr-53")
-    transcribe_pipeline = pipeline("automatic-speech-recognition", model=model_path)
+    transcribe_pipeline = pipeline(
+        "automatic-speech-recognition", 
+        model="IbrahimAmin/egyptian-arabic-wav2vec2-xlsr-53"
+    )
     logger.info("Model loaded successfully.")
 except Exception as e:
     logger.error(f"Failed to load model: {str(e)}")
