@@ -20,7 +20,10 @@ spec.loader.exec_module(embeddings_db)
 # -----------------------------
 # CLIP Embeddings for reverse search
 # -----------------------------
-clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
+clip_path = os.environ.get("CLIP_MODEL_PATH", "openai/clip-vit-base-patch32")
+clip_model = CLIPModel.from_pretrained(clip_path)
+
+# clip_model = CLIPModel.from_pretrained("openai/clip-vit-base-patch32")
 clip_processor = CLIPProcessor.from_pretrained("openai/clip-vit-base-patch32")
 clip_model.eval()
 

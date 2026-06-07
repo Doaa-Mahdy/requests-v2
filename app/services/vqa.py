@@ -21,7 +21,7 @@ def get_vqa_model():
         print("[VQA] Loading Qwen2-VL model...")
 
         device = "cuda" if torch.cuda.is_available() else "cpu"
-        model_id = "Qwen/Qwen2-VL-2B-Instruct"
+        model_id = os.environ.get("VQA_MODEL_PATH", "Qwen/Qwen2-VL-2B-Instruct")
 
         _model = Qwen2VLForConditionalGeneration.from_pretrained(
             model_id,

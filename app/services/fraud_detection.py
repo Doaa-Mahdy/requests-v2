@@ -20,10 +20,8 @@ spec.loader.exec_module(reverse_image)
 # -----------------------------
 # 1. AI-generated / manipulated image detection
 # -----------------------------
-AI_DETECTOR_MODEL = "capcheck/ai-image-detection"
-
-# Initialize the image classification pipeline
-ai_detector = pipeline("image-classification", model=AI_DETECTOR_MODEL)
+model_path = os.environ.get("FRAUD_MODEL_PATH", "capcheck/ai-image-detection")
+ai_detector = pipeline("image-classification", model=model_path)
 
 def ai_generated_probability(image_path):
     """
