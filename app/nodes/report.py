@@ -1,7 +1,21 @@
 from langchain_core.messages import HumanMessage
 from app.state import CaseState
 from app.services.llm import llm_model
+import json
+import re
 
+def safe_parse_json(text: str):
+    text = re.sub(r"```(?:json)?", "", text)
+    text = text.strip()
+
+    match = re.search(r"(\{[\s\S]*\})", text)
+    if not match:
+        return {}
+
+    try:
+        return json.loads(match.group(1))
+    except:
+        return {}
 
 def report_node(state: CaseState) -> dict:
     evidence = state.get("evidence", {})
@@ -100,8 +114,8 @@ def report_node(state: CaseState) -> dict:
 
     response = llm_model.invoke([
         HumanMessage(content=prompt)
-    ])
-
+    ]).content
+    parsed = safe_parse_json(response)
     return {
-        "final_output": response.content
+        "final_output": parsed
     }

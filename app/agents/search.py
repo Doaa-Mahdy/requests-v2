@@ -145,10 +145,21 @@ compiled_search_agent = sub_builder.compile()
 # --- THE INTERFACE NODE FOR THE MAIN GRAPH ---
 def search_agent(state: CaseState) -> dict:
     """The wrapper function imported by the main orchestrator graph."""
-    query = state.get("reasoning", {}).get("question_or_query", state.get("text", ""))
+    # query = state.get("reasoning", {}).get("question_or_query", state.get("text", ""))
+    reasoning = state.get("reasoning", {})
+    query = reasoning.get("question_or_query", state.get("text", ""))
+    why = reasoning.get("reasoning", "")
+
+    augmented_query = f"""
+    USER INTENT:
+    {query}
+
+    REASON FOR SEARCH:
+    {why}
+    """
     sub_graph_input = {
-        "text": query,
-        "messages": [HumanMessage(content=query)],
+        "text": augmented_query,
+        "messages": [HumanMessage(content=augmented_query)],
         "search_results": {},
         "loop_count": 0
     }
@@ -163,7 +174,7 @@ def search_agent(state: CaseState) -> dict:
 
     history.append({
         "type": "search",
-        "target": query,
+        "target": augmented_query,
         "content": json.dumps(results, ensure_ascii=False)
     })
 

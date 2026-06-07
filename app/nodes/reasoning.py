@@ -190,12 +190,19 @@ def reasoning_node(state: CaseState) -> dict:
         next_step = "report"
     
     current_loop = state.get("loop_count", 0) + 1
-
+    context_pack = {
+    "text": extracted_text,
+    "risk_level": risk_level,
+    "image_count": image_count,
+    "history": history_summary,
+    "raw_images": images
+}
     return {
         "reasoning": {
             "next_step": next_step,
             "question_or_query": target,
             "reasoning": action_reasoning,
+            "context": context_pack if next_step == "search" else None
         },
         "loop_count": current_loop
     }
