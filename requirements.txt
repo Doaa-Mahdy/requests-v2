@@ -1,29 +1,33 @@
-# Core dependencies
+# Core runtime
 runpod
 requests
 numpy
 Pillow
-transformers
-torch
-torchvision
-faiss-cpu
-opencv-python
-PyMuPDF
+
+# LangChain + LangGraph (for Ollama integration)
+langchain-core
+langchain-ollama
+langgraph
+
+# Search / retrieval
+tavily-python
+rapidfuzz
+
+# ML utilities
 scipy
 accelerate
 
-# Audio/Video processing
+# Vision / OCR / embeddings
+faiss-cpu
+opencv-python
+PyMuPDF
+
+# Audio
 pydub
-ffmpeg-python
 soundfile
-# NLP & Language
+
+# General NLP utils
 word2number
-ollama
-langchain-ollama
-langgraph
-langchain-core
-tavily
-rapidfuzz
 
 # Testing
 pytest
