@@ -5,7 +5,7 @@ FROM ollama/ollama:latest
 # =========================
 RUN apt-get update && apt-get install -y \
     python3 \
-    python3-pip \
+    python3-venv \
     python3-dev \
     curl \
     git \
@@ -18,36 +18,52 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # =========================
+# Create virtual environment (FIX)
+# =========================
+RUN python3 -m venv /venv
+ENV PATH="/venv/bin:$PATH"
+
+# =========================
 # Python dependencies
 # =========================
 COPY requirements.txt .
 
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # =========================
 # Copy app
 # =========================
 COPY . .
-# Preload models
+
+# =========================
+# Pre-download python models (safe)
+# =========================
 RUN python app/scripts/download_models.py
 
 # =========================
-# Pre-pull model (BEST PRACTICE)
+# Ollama model preload (IMPORTANT FIX)
 # =========================
+RUN ollama serve >/tmp/ollama.log 2>&1 & \
+    sleep 15 && \
+    ollama pull qwen2.5:7b && \
+    pkill ollama || true
 
-RUN ollama serve & \
-    sleep 10 && \
-    ollama pull qwen2.5:7b
-
-# 5. Environment & Entrypoint
+# =========================
+# Environment
+# =========================
 ENV TRANSFORMERS_OFFLINE=1
+ENV OLLAMA_HOST=http://localhost:11434
 ENV FRAUD_MODEL_PATH=/app/models/fraud_detection
 ENV CLIP_MODEL_PATH=/app/models/clip_vit
 ENV STT_MODEL_PATH=/app/models/stt_model
 ENV VQA_MODEL_PATH=/app/models/qwen_vl
 
-# Entrypoint setup
+# =========================
+# Entrypoint
+# =========================
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
+
 ENTRYPOINT ["./entrypoint.sh"]
+ 
