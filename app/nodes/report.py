@@ -8,12 +8,20 @@ def safe_parse_json(text: str):
     text = re.sub(r"```(?:json)?", "", text)
     text = text.strip()
 
-    match = re.search(r"(\{[\s\S]*\})", text)
-    if not match:
+    # extract first valid JSON object only
+    start = text.find("{")
+    end = text.rfind("}")
+
+    if start == -1 or end == -1 or end <= start:
         return {}
 
+    candidate = text[start:end+1]
+
+    # fix trailing commas
+    candidate = re.sub(r",\s*([\]}])", r"\1", candidate)
+
     try:
-        return json.loads(match.group(1))
+        return json.loads(candidate)
     except:
         return {}
 
@@ -29,7 +37,7 @@ def report_node(state: CaseState) -> dict:
 مهمتك: بناء فهم موحد للحالة من جميع الأدلة (نص + صور + بحث + سجل عمليات) ثم إصدار قرار إنساني دقيق.
 
 ━━━━━━━━━━━━━━━━━━━━━━
-📌 المدخلات
+📌 INPUT
 ━━━━━━━━━━━━━━━━━━━━━━
 النص الأصلي: {text}
 نتائج الاستدلال: {reasoning}
@@ -90,7 +98,7 @@ def report_node(state: CaseState) -> dict:
 → طلب معلومات إضافية
 
 ━━━━━━━━━━━━━━━━━━━━━━
-📤 الإخراج (JSON فقط)
+📤 OUTPUT (JSON only)
 ━━━━━━━━━━━━━━━━━━━━━━
 
 {{
@@ -117,5 +125,8 @@ def report_node(state: CaseState) -> dict:
     ]).content
     parsed = safe_parse_json(response)
     return {
-        "final_output": parsed
+    "final_output": parsed if parsed else {
+        "error": "failed_to_parse_llm_output",
+        "raw": response
+    }
     }
