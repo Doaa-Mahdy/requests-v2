@@ -9,6 +9,7 @@ faiss-cpu
 opencv-python
 PyMuPDF
 scipy
+accelerate
 
 # Audio/Video processing
 pydub
