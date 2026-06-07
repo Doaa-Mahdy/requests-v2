@@ -287,10 +287,14 @@ def create_vqa_prompt(question: str, ocr_text: str = "", context: str = "", cate
     parts.append(f"السؤال:\n{question}")
 
     parts.append(
-        "- إذا غير واضح قل غير واضح\n"
-        "- لا تخمن\n"
-        "- أجب بإيجاز"
-    )
+        """
+        IMPORTANT RULES:
+        - لا تخمن أي معلومة غير موجودة في الصورة
+        - إذا لم تجد إجابة واضحة اكتب: "غير واضح"
+        - لا تكتب كلمات مثل: أجرب / محاولة / تخمين
+        - أجب فقط بمعلومة واحدة قصيرة
+        """
+        )
 
     return "\n\n".join(parts)
 
