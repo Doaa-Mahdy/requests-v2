@@ -39,7 +39,6 @@ COPY . .
 # =========================
 # Environment
 # =========================
-ENV TRANSFORMERS_OFFLINE=1
 ENV OLLAMA_HOST=http://localhost:11434
 # =========================
 # Entrypoint
