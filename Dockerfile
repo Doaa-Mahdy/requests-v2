@@ -41,7 +41,7 @@ COPY . .
 # =========================
 ENV OLLAMA_HOST=http://localhost:11434
 # =========================
-# Entrypoint
+# Entrypoint  
 # =========================
 COPY entrypoint.sh .
 RUN chmod +x entrypoint.sh
