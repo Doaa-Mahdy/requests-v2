@@ -37,4 +37,4 @@ faiss-cpu>=1.7.4
 # Testing
 pytest
 runpod
-base64
+
