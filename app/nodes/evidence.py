@@ -127,7 +127,7 @@ def evidence_node(state: CaseState) -> dict:
         "immutable_metadata": {
             "user_id": user_id,
             "source_text_present": bool(intake_text.strip()),
-            "ocr_executed": bool(intake_text.strip())
+            "ocr_executed": bool(state.get("normalized_case", {}).get("ocr_executed", False))
         }
     }
 

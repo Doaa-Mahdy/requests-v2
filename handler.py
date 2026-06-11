@@ -1,4 +1,5 @@
 import base64
+import os
 import tempfile
 import runpod
 
@@ -34,6 +35,22 @@ def _decode_to_temp_file(b64_data: str, suffix: str, temp_files: list):
     return tmp.name
 
 
+def _is_base64_string(data: str) -> bool:
+    """Return True if the value is a valid base64-encoded string or data URI."""
+    if not isinstance(data, str):
+        return False
+
+    raw = _strip_base64_header(data)
+    if not raw.strip():
+        return False
+
+    try:
+        base64.b64decode(raw, validate=True)
+        return True
+    except Exception:
+        return False
+
+
 # -----------------------------
 # Handler
 # -----------------------------
@@ -48,38 +65,58 @@ def handler(job):
     # =========================
 
     voice_path = None
-    if "voice_base64" in job_input:
+    voice_base64 = job_input.get("voice_base64") or job_input.get("audio_base64")
+    if voice_base64:
         try:
             voice_path = _decode_to_temp_file(
-                job_input["voice_base64"],
+                voice_base64,
                 ".mp3",
                 temp_files
             )
         except Exception as e:
             return {"error": f"Failed to decode voice audio: {str(e)}"}
+    else:
+        candidate_voice_path = job_input.get("voice_path") or job_input.get("audio_path")
+        if isinstance(candidate_voice_path, str) and os.path.exists(candidate_voice_path):
+            voice_path = candidate_voice_path
 
     images = []
-    if "images_base64" in job_input:
-        imgs = job_input["images_base64"]
-        if not isinstance(imgs, list):
-            imgs = [imgs]
+    image_inputs = job_input.get("images_base64") or job_input.get("images")
+    if image_inputs:
+        if not isinstance(image_inputs, list):
+            image_inputs = [image_inputs]
 
-        for idx, img_b64 in enumerate(imgs):
+        for idx, img_item in enumerate(image_inputs):
+            if isinstance(img_item, str) and os.path.exists(img_item):
+                images.append({
+                    "image_id": f"IMG-{idx+1:03d}",
+                    "image_path": img_item,
+                    "ocr_extracted_text": ""
+                })
+                continue
+
+            if not isinstance(img_item, str):
+                print(f"[WARN] Image {idx} skipped: unsupported type {type(img_item).__name__}")
+                continue
+
+            if not _is_base64_string(img_item):
+                print(f"[WARN] Image {idx} skipped: not a valid base64 string or existing path")
+                continue
+
+            suffix = ".jpg"
+            if img_item.startswith("data:image/png") or "image/png" in img_item:
+                suffix = ".png"
+
             try:
                 img_path = _decode_to_temp_file(
-                    img_b64,
-                    ".jpg",
+                    img_item,
+                    suffix,
                     temp_files
                 )
 
-                images.append({
-                    "image_id": f"IMG-{idx+1:03d}",
-                    "image_path": img_path,
-                    "ocr_extracted_text": ""
-                })
+                images.append(img_path)
 
             except Exception as e:
-                # don't fail entire pipeline for one bad image
                 print(f"[WARN] Image {idx} failed: {e}")
 
     # =========================
@@ -100,7 +137,7 @@ def handler(job):
 
     elif action == "vqa":
         vqa_model, vqa_processor = get_vqa_model()
-        image_path = images[0]["image_path"] if images else None
+        image_path = images[0] if images else None
         return {"status": "vqa_done", "image_used": image_path}
 
     elif action == "stt":
