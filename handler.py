@@ -89,6 +89,7 @@ def handler(job):
     if action == "full_pipeline":
         initial_state = {
             "text": job_input.get("text", ""),
+            "user_id":  job_input.get("user_id", ""),
             "images": images,
             "voice_path": voice_path,
             "evidence": {},
@@ -96,10 +97,6 @@ def handler(job):
             "loop_count": 0
         }
         return graph.invoke(initial_state)
-
-    elif action == "fraud_check":
-        image_path = images[0]["image_path"] if images else None
-        return detect_fraud(image_path)
 
     elif action == "vqa":
         vqa_model, vqa_processor = get_vqa_model()

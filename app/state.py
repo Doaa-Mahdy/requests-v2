@@ -4,7 +4,7 @@ class CaseState(TypedDict):
     text: str
     voice_path: Optional[str]
     images: List[str]
-
+    user_id: str
     transcript: Optional[str]
     normalized_case: Dict[str, Any]
     evidence: Dict[str, Any]
